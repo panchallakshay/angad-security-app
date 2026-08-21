@@ -49,25 +49,25 @@ fun GeolocationWebView(domain: String, modifier: Modifier = Modifier) {
                 }
                 ipAddress = resolvedIp
 
-                // Step 2: Fetch geolocation from ip-api.com (free, no key, always online)
-                val apiUrl = "http://ip-api.com/json/$resolvedIp?fields=status,country,regionName,city,lat,lon"
+                // Step 2: Fetch geolocation from ipwho.is (free, HTTPS, always online)
+                val apiUrl = "https://ipwho.is/$resolvedIp"
                 val conn = URL(apiUrl).openConnection() as HttpURLConnection
-                conn.connectTimeout = 5000
-                conn.readTimeout = 5000
+                conn.connectTimeout = 6000
+                conn.readTimeout = 6000
                 conn.requestMethod = "GET"
 
                 val jsonStr = conn.inputStream.bufferedReader().readText()
                 conn.disconnect()
 
                 val json = JSONObject(jsonStr)
-                if (json.optString("status") == "success") {
+                if (json.optBoolean("success", false)) {
                     geoData = GeoResult(
                         ip = resolvedIp,
                         country = json.optString("country", ""),
-                        region = json.optString("regionName", ""),
+                        region = json.optString("region", ""),
                         city = json.optString("city", ""),
-                        latitude = json.optDouble("lat", 0.0),
-                        longitude = json.optDouble("lon", 0.0)
+                        latitude = json.optDouble("latitude", 0.0),
+                        longitude = json.optDouble("longitude", 0.0)
                     )
                 } else {
                     errorMsg = "Location unavailable for this IP"
