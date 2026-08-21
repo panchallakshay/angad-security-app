@@ -60,25 +60,39 @@ fun GeolocationWebView(domain: String, modifier: Modifier = Modifier) {
                     InetAddress.getByName(cleanDomain).hostAddress ?: "0.0.0.0"
                 } catch (e: Exception) { "0.0.0.0" }
 
+                // Robust Multi-DoH Fallback for Blocked Domains
                 if (resolvedIp == "0.0.0.0" || resolvedIp.startsWith("127.") || resolvedIp.startsWith("10.")) {
-                    try {
-                        val dohConn = URL("https://cloudflare-dns.com/dns-query?name=$cleanDomain&type=A").openConnection() as HttpURLConnection
-                        dohConn.setRequestProperty("accept", "application/dns-json")
-                        dohConn.connectTimeout = 4000
-                        dohConn.readTimeout = 4000
-                        val dohJson = JSONObject(dohConn.inputStream.bufferedReader().readText())
-                        dohConn.disconnect()
-                        val answers = dohJson.optJSONArray("Answer")
-                        if (answers != null) {
-                            for (i in 0 until answers.length()) {
-                                val answer = answers.getJSONObject(i)
-                                if (answer.optInt("type") == 1) { // Type 1 is A record (IPv4)
-                                    resolvedIp = answer.optString("data", resolvedIp)
-                                    break
+                    var dohSuccess = false
+                    val dohUrls = listOf(
+                        "https://cloudflare-dns.com/dns-query?name=$cleanDomain&type=A",
+                        "https://dns.alidns.com/resolve?name=$cleanDomain&type=1"
+                    )
+                    
+                    for (dohUrl in dohUrls) {
+                        try {
+                            val dohConn = URL(dohUrl).openConnection() as HttpURLConnection
+                            dohConn.setRequestProperty("accept", "application/dns-json")
+                            dohConn.setRequestProperty("User-Agent", "AngadSecurityApp/1.0")
+                            dohConn.connectTimeout = 6000
+                            dohConn.readTimeout = 6000
+                            val jsonStr = dohConn.inputStream.bufferedReader().readText()
+                            dohConn.disconnect()
+                            
+                            val dohJson = JSONObject(jsonStr)
+                            val answers = dohJson.optJSONArray("Answer")
+                            if (answers != null) {
+                                for (i in 0 until answers.length()) {
+                                    val answer = answers.getJSONObject(i)
+                                    if (answer.optInt("type") == 1) { // Type 1 is A record (IPv4)
+                                        resolvedIp = answer.optString("data", resolvedIp)
+                                        dohSuccess = true
+                                        break
+                                    }
                                 }
                             }
-                        }
-                    } catch (_: Exception) {}
+                            if (dohSuccess) break
+                        } catch (_: Exception) {}
+                    }
                 }
                 ipAddress = resolvedIp
 
