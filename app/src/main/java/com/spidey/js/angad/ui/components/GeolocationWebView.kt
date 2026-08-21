@@ -170,20 +170,6 @@ fun GeolocationWebView(domain: String, modifier: Modifier = Modifier) {
  */
 private fun buildMapBitmap(lat: Double, lon: Double, zoom: Int = 12): Bitmap? {
     return try {
-        // Resolve OpenStreetMap CDN IP to bypass local DNS
-        var osmIp = "151.101.129.91" // Fastly fallback
-        try {
-            val dohConn = URL("https://8.8.8.8/resolve?name=tile.openstreetmap.org&type=A").openConnection() as HttpURLConnection
-            dohConn.connectTimeout = 3000
-            dohConn.readTimeout = 3000
-            val dohJson = JSONObject(dohConn.inputStream.bufferedReader().readText())
-            dohConn.disconnect()
-            val answers = dohJson.optJSONArray("Answer")
-            if (answers != null && answers.length() > 0) {
-                osmIp = answers.getJSONObject(0).optString("data", osmIp)
-            }
-        } catch (_: Exception) {}
-
         val tileSize = 256
         val n = 1 shl zoom
         val xtile = ((lon + 180.0) / 360.0 * n).toInt()
@@ -201,12 +187,11 @@ private fun buildMapBitmap(lat: Double, lon: Double, zoom: Int = 12): Bitmap? {
                 val tx = xtile + dx
                 val ty = ytile + dy
                 try {
-                    // Fetch tile directly via IP (HTTP) to bypass SSL strict verification on direct IPs
-                    val tileUrl = "http://$osmIp/$zoom/$tx/$ty.png"
+                    // Fetch tile using standard HTTPS to avoid Android cleartext/Host header blocks
+                    val tileUrl = "https://tile.openstreetmap.org/$zoom/$tx/$ty.png"
                     val conn = URL(tileUrl).openConnection() as HttpURLConnection
                     conn.connectTimeout = 4000
                     conn.readTimeout = 4000
-                    conn.setRequestProperty("Host", "tile.openstreetmap.org")
                     conn.setRequestProperty("User-Agent", "AngadSecurityApp/1.0")
                     val tile = BitmapFactory.decodeStream(conn.inputStream)
                     conn.disconnect()
