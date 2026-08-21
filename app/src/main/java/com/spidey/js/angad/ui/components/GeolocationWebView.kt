@@ -55,14 +55,14 @@ fun GeolocationWebView(domain: String, modifier: Modifier = Modifier) {
                     .removePrefix("http://").removePrefix("https://")
                     .split("/")[0]
 
-                // Resolve IP (with Google DoH fallback for VPN-blocked domains)
+                // STEP 1: Resolve Domain to IP (Bypass local DNS if needed)
                 var resolvedIp = try {
                     InetAddress.getByName(cleanDomain).hostAddress ?: "0.0.0.0"
                 } catch (e: Exception) { "0.0.0.0" }
 
                 if (resolvedIp == "0.0.0.0" || resolvedIp.startsWith("127.") || resolvedIp.startsWith("10.")) {
                     try {
-                        val dohConn = URL("https://dns.google/resolve?name=$cleanDomain&type=A").openConnection() as HttpURLConnection
+                        val dohConn = URL("https://8.8.8.8/resolve?name=$cleanDomain&type=A").openConnection() as HttpURLConnection
                         dohConn.connectTimeout = 4000
                         dohConn.readTimeout = 4000
                         val dohJson = JSONObject(dohConn.inputStream.bufferedReader().readText())
@@ -75,25 +75,28 @@ fun GeolocationWebView(domain: String, modifier: Modifier = Modifier) {
                 }
                 ipAddress = resolvedIp
 
-                // Fetch geolocation
-                val conn = URL("https://ipwho.is/$resolvedIp").openConnection() as HttpURLConnection
+                // STEP 2: Fetch Geolocation via Direct IP (Bypasses DNS failure)
+                // 208.95.112.1 is ip-api.com
+                val apiUrl = "http://208.95.112.1/json/$resolvedIp?fields=status,country,regionName,city,lat,lon"
+                val conn = URL(apiUrl).openConnection() as HttpURLConnection
                 conn.connectTimeout = 6000
                 conn.readTimeout = 6000
-                val json = JSONObject(conn.inputStream.bufferedReader().readText())
+                val jsonStr = conn.inputStream.bufferedReader().readText()
                 conn.disconnect()
 
-                if (json.optBoolean("success", false)) {
+                val json = JSONObject(jsonStr)
+                if (json.optString("status") == "success") {
                     val geo = GeoResult(
                         ip = resolvedIp,
                         country = json.optString("country", ""),
-                        region = json.optString("region", ""),
+                        region = json.optString("regionName", ""),
                         city = json.optString("city", ""),
-                        latitude = json.optDouble("latitude", 0.0),
-                        longitude = json.optDouble("longitude", 0.0)
+                        latitude = json.optDouble("lat", 0.0),
+                        longitude = json.optDouble("lon", 0.0)
                     )
                     geoData = geo
 
-                    // Fetch map tiles and build map bitmap (bypasses VPN WebView block)
+                    // STEP 3: Fetch map tiles robustly
                     mapBitmap = buildMapBitmap(geo.latitude, geo.longitude)
                 } else {
                     errorMsg = "Location unavailable"
@@ -163,23 +166,33 @@ fun GeolocationWebView(domain: String, modifier: Modifier = Modifier) {
 /**
  * Fetches a 3x3 grid of OSM tiles, stitches them into one bitmap,
  * and draws a red marker at the target coordinates.
- * Uses HttpURLConnection (same path as API calls - bypasses VPN WebView block).
+ * Resolves OSM tiles via Google DoH to bypass local DNS failures.
  */
 private fun buildMapBitmap(lat: Double, lon: Double, zoom: Int = 12): Bitmap? {
     return try {
-        val tileSize = 256
+        // Resolve OpenStreetMap CDN IP to bypass local DNS
+        var osmIp = "151.101.129.91" // Fastly fallback
+        try {
+            val dohConn = URL("https://8.8.8.8/resolve?name=tile.openstreetmap.org&type=A").openConnection() as HttpURLConnection
+            dohConn.connectTimeout = 3000
+            dohConn.readTimeout = 3000
+            val dohJson = JSONObject(dohConn.inputStream.bufferedReader().readText())
+            dohConn.disconnect()
+            val answers = dohJson.optJSONArray("Answer")
+            if (answers != null && answers.length() > 0) {
+                osmIp = answers.getJSONObject(0).optString("data", osmIp)
+            }
+        } catch (_: Exception) {}
 
-        // Convert lat/lon to tile coordinates
+        val tileSize = 256
         val n = 1 shl zoom
         val xtile = ((lon + 180.0) / 360.0 * n).toInt()
         val ytile = ((1.0 - ln(tan(Math.toRadians(lat)) + 1.0 / cos(Math.toRadians(lat))) / PI) / 2.0 * n).toInt()
 
-        // Fetch 3x3 grid of tiles for wider view
         val gridSize = 3
         val resultBitmap = Bitmap.createBitmap(tileSize * gridSize, tileSize * gridSize, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(resultBitmap)
 
-        // Fill background
         val bgPaint = Paint().apply { color = android.graphics.Color.parseColor("#1a1c29") }
         canvas.drawRect(0f, 0f, resultBitmap.width.toFloat(), resultBitmap.height.toFloat(), bgPaint)
 
@@ -188,10 +201,12 @@ private fun buildMapBitmap(lat: Double, lon: Double, zoom: Int = 12): Bitmap? {
                 val tx = xtile + dx
                 val ty = ytile + dy
                 try {
-                    val tileUrl = "https://tile.openstreetmap.org/$zoom/$tx/$ty.png"
+                    // Fetch tile directly via IP (HTTP) to bypass SSL strict verification on direct IPs
+                    val tileUrl = "http://$osmIp/$zoom/$tx/$ty.png"
                     val conn = URL(tileUrl).openConnection() as HttpURLConnection
-                    conn.connectTimeout = 5000
-                    conn.readTimeout = 5000
+                    conn.connectTimeout = 4000
+                    conn.readTimeout = 4000
+                    conn.setRequestProperty("Host", "tile.openstreetmap.org")
                     conn.setRequestProperty("User-Agent", "AngadSecurityApp/1.0")
                     val tile = BitmapFactory.decodeStream(conn.inputStream)
                     conn.disconnect()
@@ -201,17 +216,16 @@ private fun buildMapBitmap(lat: Double, lon: Double, zoom: Int = 12): Bitmap? {
                         canvas.drawBitmap(tile, px.toFloat(), py.toFloat(), null)
                         tile.recycle()
                     }
-                } catch (_: Exception) { /* skip failed tile */ }
+                } catch (e: Exception) { e.printStackTrace() }
             }
         }
 
-        // Calculate pixel position of marker within the stitched bitmap
+        // Calculate marker position
         val xExact = (lon + 180.0) / 360.0 * n
         val yExact = (1.0 - ln(tan(Math.toRadians(lat)) + 1.0 / cos(Math.toRadians(lat))) / PI) / 2.0 * n
         val markerX = ((xExact - xtile + 1) * tileSize).toFloat()
         val markerY = ((yExact - ytile + 1) * tileSize).toFloat()
 
-        // Draw red glowing marker
         val glowPaint = Paint().apply {
             color = android.graphics.Color.parseColor("#44FF1744")
             isAntiAlias = true
@@ -238,3 +252,4 @@ private fun buildMapBitmap(lat: Double, lon: Double, zoom: Int = 12): Bitmap? {
         null
     }
 }
+
