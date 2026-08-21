@@ -68,8 +68,14 @@ fun GeolocationWebView(domain: String, modifier: Modifier = Modifier) {
                         val dohJson = JSONObject(dohConn.inputStream.bufferedReader().readText())
                         dohConn.disconnect()
                         val answers = dohJson.optJSONArray("Answer")
-                        if (answers != null && answers.length() > 0) {
-                            resolvedIp = answers.getJSONObject(answers.length() - 1).optString("data", resolvedIp)
+                        if (answers != null) {
+                            for (i in 0 until answers.length()) {
+                                val answer = answers.getJSONObject(i)
+                                if (answer.optInt("type") == 1) { // Type 1 is A record (IPv4)
+                                    resolvedIp = answer.optString("data", resolvedIp)
+                                    break
+                                }
+                            }
                         }
                     } catch (_: Exception) {}
                 }
