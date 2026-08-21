@@ -1,0 +1,6 @@
+.git
+.gitignore
+angad-blockchain
+blockchain_test_results.txt
+test_blockchain.sh
+data/

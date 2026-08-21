@@ -1,0 +1,113 @@
+[
+  {
+    "index": 0,
+    "timestamp": 1786987618,
+    "transactions": [
+      {
+        "txId": "f7a36bcdbc5c97e5953e43ae3a797650c036ec9debd2d042ba0252889b8ad0c2",
+        "domain": "genesis.angad.network",
+        "category": "safe",
+        "riskScore": 0,
+        "reportedBy": "SYSTEM",
+        "timestamp": 1786987618,
+        "signature": "c4460e42cc43749f5bf3c02314ae2f45ac9713e7e45cbe541a9a1a5d7f58b7a1"
+      }
+    ],
+    "miner": "SYSTEM",
+    "merkleRoot": "f7a36bcdbc5c97e5953e43ae3a797650c036ec9debd2d042ba0252889b8ad0c2",
+    "prevHash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "hash": "144ef79ad91e099fe2e19eb68d03932837df469fc755940e52abe3c030cf1e30",
+    "nonce": 0,
+    "difficulty": 2
+  },
+  {
+    "index": 1,
+    "timestamp": 1786987717,
+    "transactions": [
+      {
+        "txId": "7aeecd58521876cd61ae1067a84c5eadd13c4e5afd2ff186cc5608915387d497",
+        "domain": "evil-phish-site.xyz",
+        "category": "phishing",
+        "riskScore": 0.92,
+        "reportedBy": "ShieldNet",
+        "timestamp": 1786987717,
+        "signature": "1421fe2c3dfbb3832262175c1f5d2627ddf68ae9af07cfb72ee687f1336e1f43"
+      },
+      {
+        "txId": "e7d0f1ae516625953314da59f6144a10884b079db1747f8079ea200b0c3e65b4",
+        "domain": "malware-dropper.top",
+        "category": "malware",
+        "riskScore": 0.88,
+        "reportedBy": "NetGuard",
+        "timestamp": 1786987717,
+        "signature": "f4d3ea5cef3391bbbc727a3c969f0344d2752611bc750748dad13a62a98cb1eb"
+      },
+      {
+        "txId": "3fa37782d71836809d9c522e995c9208dad943b178e39f9f4ff16f31491accfe",
+        "domain": "data-exfil-bucket.cc",
+        "category": "data_leak",
+        "riskScore": 0.75,
+        "reportedBy": "NetGuard",
+        "timestamp": 1786987717,
+        "signature": "5c98eb7aff410b9255f1feec0aa37b00662eb408d5e47201530a9a72cddc7177"
+      }
+    ],
+    "miner": "Miner-Node-1",
+    "merkleRoot": "e8b251a240bd044a6fe692621041ade22aedcc085543addb25801fae256a89aa",
+    "prevHash": "144ef79ad91e099fe2e19eb68d03932837df469fc755940e52abe3c030cf1e30",
+    "hash": "002918dcaa847b91d3c86d85980be4bce8b4c8ef57f3fe4e0c3788d056e796e3",
+    "nonce": 545,
+    "difficulty": 2
+  },
+  {
+    "index": 2,
+    "timestamp": 1786987801,
+    "transactions": [
+      {
+        "txId": "7aac7ac59373db049866bf6615c5c2aedca811c7652d7c742c4dfae5c7521c5c",
+        "domain": "ratetest.com",
+        "category": "scam",
+        "riskScore": 0.5,
+        "reportedBy": "test",
+        "timestamp": 1786987718,
+        "signature": "e9546be7b81eef4a519b63f2b9c564b55a4473679c8f926ea46fa2c51ae5da37"
+      },
+      {
+        "txId": "1d125d509389e84e48f04d72f658126518b2ef90d7ef592f733138b50ce7e5c0",
+        "domain": "compat-retest.site",
+        "category": "scam",
+        "riskScore": 0.81,
+        "reportedBy": "LiteRT-ShieldNet",
+        "timestamp": 1786987801,
+        "signature": "f9a1fcdd54fecfa95ba93658291800bce95fa3b383c22ee20a0aa3c7109d54e3"
+      }
+    ],
+    "miner": "Miner-Node-1",
+    "merkleRoot": "fd09608caab706ef39f1a7b7d43cb09c278d1c91aededdd6490ce1eea84f2ab5",
+    "prevHash": "002918dcaa847b91d3c86d85980be4bce8b4c8ef57f3fe4e0c3788d056e796e3",
+    "hash": "001171a89c2b85894816d91802ef975c5f7cb963383da81ec344a1535c0a4189",
+    "nonce": 253,
+    "difficulty": 2
+  },
+  {
+    "index": 3,
+    "timestamp": 1786987824,
+    "transactions": [
+      {
+        "txId": "8c0197890e053239463506fddc4f91827d063831b4af12ad63d74edc28c8951f",
+        "domain": "evil-phish-site.xyz",
+        "category": "phishing",
+        "riskScore": 1,
+        "reportedBy": "LiteRT-ShieldNet-AutoMine",
+        "timestamp": 1786987824,
+        "signature": "b0e96ea94a1db8c767e0e190d51c96cd4d0eaadf119fda664c208629865432a8"
+      }
+    ],
+    "miner": "Miner-Node-1",
+    "merkleRoot": "8c0197890e053239463506fddc4f91827d063831b4af12ad63d74edc28c8951f",
+    "prevHash": "001171a89c2b85894816d91802ef975c5f7cb963383da81ec344a1535c0a4189",
+    "hash": "00448036d8026803ab02824046a665f1e2553ce836ef1b03bb8ee09368495c5b",
+    "nonce": 941,
+    "difficulty": 2
+  }
+]

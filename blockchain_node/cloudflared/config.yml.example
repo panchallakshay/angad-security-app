@@ -1,0 +1,16 @@
+# Cloudflare Tunnel Configuration (for CLI / config-file based tunnels)
+# If you are using Dashboard-managed tunnels (Token-based), you don't need this file.
+
+tunnel: YOUR_TUNNEL_UUID_OR_NAME
+credentials-file: /etc/cloudflared/credentials.json
+
+ingress:
+  # Route traffic for your custom subdomain to the blockchain node container
+  - hostname: node.yourdomain.com
+    service: http://blockchain-node:8080
+    originRequest:
+      noTLSVerify: true
+      connectTimeout: 30s
+
+  # Catch-all rule (required by cloudflared)
+  - service: http_status:404

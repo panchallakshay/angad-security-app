@@ -1,0 +1,21 @@
+# ==============================================================================
+# Cloudflare Tunnel Configuration File (Manual Host Setup)
+# Default location on Linux: ~/.cloudflared/config.yml
+# ==============================================================================
+
+# Replace with your Tunnel UUID or Name created via `cloudflared tunnel create <name>`
+tunnel: YOUR_TUNNEL_UUID
+
+# Path to the credentials file generated during tunnel creation
+credentials-file: /home/sonu/.cloudflared/YOUR_TUNNEL_UUID.json
+
+ingress:
+  # Route traffic for your custom subdomain to the Dockerized blockchain node on host port 8080
+  - hostname: node.yourdomain.com
+    service: http://127.0.0.1:8080
+    originRequest:
+      noTLSVerify: true
+      connectTimeout: 30s
+
+  # Catch-all rule (required by cloudflared)
+  - service: http_status:404
