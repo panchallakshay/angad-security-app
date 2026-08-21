@@ -75,31 +75,64 @@ fun GeolocationWebView(domain: String, modifier: Modifier = Modifier) {
                 }
                 ipAddress = resolvedIp
 
-                // STEP 2: Fetch Geolocation via Direct IP (Bypasses DNS failure)
-                // 208.95.112.1 is ip-api.com
-                val apiUrl = "http://208.95.112.1/json/$resolvedIp?fields=status,country,regionName,city,lat,lon"
-                val conn = URL(apiUrl).openConnection() as HttpURLConnection
-                conn.connectTimeout = 6000
-                conn.readTimeout = 6000
-                val jsonStr = conn.inputStream.bufferedReader().readText()
-                conn.disconnect()
+                // STEP 2: Robust Multi-API Geolocation Fetching
+                var geo: GeoResult? = null
+                
+                // Try 1: ip-api.com (Direct IP, fastest but has 45/min rate limit)
+                if (geo == null) {
+                    try {
+                        val apiUrl1 = "http://208.95.112.1/json/$resolvedIp?fields=status,country,regionName,city,lat,lon"
+                        val conn1 = URL(apiUrl1).openConnection() as HttpURLConnection
+                        conn1.connectTimeout = 4000
+                        conn1.readTimeout = 4000
+                        val jsonStr1 = conn1.inputStream.bufferedReader().readText()
+                        conn1.disconnect()
+                        val json1 = JSONObject(jsonStr1)
+                        if (json1.optString("status") == "success") {
+                            geo = GeoResult(resolvedIp, json1.optString("country", ""), json1.optString("regionName", ""), json1.optString("city", ""), json1.optDouble("lat", 0.0), json1.optDouble("lon", 0.0))
+                        }
+                    } catch (e: Exception) { /* Rate limited or HTTP blocked */ }
+                }
 
-                val json = JSONObject(jsonStr)
-                if (json.optString("status") == "success") {
-                    val geo = GeoResult(
-                        ip = resolvedIp,
-                        country = json.optString("country", ""),
-                        region = json.optString("regionName", ""),
-                        city = json.optString("city", ""),
-                        latitude = json.optDouble("lat", 0.0),
-                        longitude = json.optDouble("lon", 0.0)
-                    )
+                // Try 2: ipwho.is (HTTPS, highly reliable, handles Anycast IPs well)
+                if (geo == null) {
+                    try {
+                        val apiUrl2 = "https://ipwho.is/$resolvedIp"
+                        val conn2 = URL(apiUrl2).openConnection() as HttpURLConnection
+                        conn2.connectTimeout = 4000
+                        conn2.readTimeout = 4000
+                        val jsonStr2 = conn2.inputStream.bufferedReader().readText()
+                        conn2.disconnect()
+                        val json2 = JSONObject(jsonStr2)
+                        if (json2.optBoolean("success", false)) {
+                            geo = GeoResult(resolvedIp, json2.optString("country", ""), json2.optString("region", ""), json2.optString("city", ""), json2.optDouble("latitude", 0.0), json2.optDouble("longitude", 0.0))
+                        }
+                    } catch (e: Exception) { /* Network error */ }
+                }
+
+                // Try 3: Our Custom Render Backend (Slowest cold start, but no rate limits + GeoLite2 database)
+                if (geo == null) {
+                    try {
+                        val apiUrl3 = "https://angad-geo-server.onrender.com/api/geolocation/$resolvedIp"
+                        val conn3 = URL(apiUrl3).openConnection() as HttpURLConnection
+                        conn3.connectTimeout = 8000
+                        conn3.readTimeout = 8000
+                        val jsonStr3 = conn3.inputStream.bufferedReader().readText()
+                        conn3.disconnect()
+                        val json3 = JSONObject(jsonStr3)
+                        if (json3.optBoolean("success", false)) {
+                            val loc = json3.getJSONObject("location")
+                            geo = GeoResult(resolvedIp, loc.optString("country", ""), loc.optString("region", ""), loc.optString("city", ""), loc.optDouble("latitude", 0.0), loc.optDouble("longitude", 0.0))
+                        }
+                    } catch (e: Exception) { /* Backend asleep/dead */ }
+                }
+
+                if (geo != null) {
                     geoData = geo
-
-                    // STEP 3: Fetch map tiles robustly
+                    // STEP 3: Fetch map tiles robustly via Canvas
                     mapBitmap = buildMapBitmap(geo.latitude, geo.longitude)
                 } else {
-                    errorMsg = "Location unavailable"
+                    errorMsg = "Location unavailable (All APIs failed)"
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
