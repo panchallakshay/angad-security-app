@@ -62,7 +62,8 @@ fun GeolocationWebView(domain: String, modifier: Modifier = Modifier) {
 
                 if (resolvedIp == "0.0.0.0" || resolvedIp.startsWith("127.") || resolvedIp.startsWith("10.")) {
                     try {
-                        val dohConn = URL("https://8.8.8.8/resolve?name=$cleanDomain&type=A").openConnection() as HttpURLConnection
+                        val dohConn = URL("https://cloudflare-dns.com/dns-query?name=$cleanDomain&type=A").openConnection() as HttpURLConnection
+                        dohConn.setRequestProperty("accept", "application/dns-json")
                         dohConn.connectTimeout = 4000
                         dohConn.readTimeout = 4000
                         val dohJson = JSONObject(dohConn.inputStream.bufferedReader().readText())
