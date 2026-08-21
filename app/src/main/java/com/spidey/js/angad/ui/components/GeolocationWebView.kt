@@ -25,6 +25,15 @@ import java.net.HttpURLConnection
 import java.net.InetAddress
 import java.net.URL
 
+data class GeoResult(
+    val ip: String,
+    val country: String,
+    val region: String,
+    val city: String,
+    val latitude: Double,
+    val longitude: Double
+)
+
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
 fun GeolocationWebView(domain: String, modifier: Modifier = Modifier) {
@@ -38,7 +47,6 @@ fun GeolocationWebView(domain: String, modifier: Modifier = Modifier) {
         errorMsg = null
         withContext(Dispatchers.IO) {
             try {
-                // Step 1: Resolve domain -> IP
                 val cleanDomain = domain.trim()
                     .removePrefix("http://").removePrefix("https://")
                     .split("/")[0]
@@ -48,7 +56,7 @@ fun GeolocationWebView(domain: String, modifier: Modifier = Modifier) {
                     InetAddress.getByName(cleanDomain).hostAddress ?: "0.0.0.0"
                 } catch (e: Exception) { "0.0.0.0" }
 
-                // If VPN blocked it (0.0.0.0) or it's a private IP, use Google DNS-over-HTTPS
+                // If VPN blocked it (0.0.0.0), use Google DNS-over-HTTPS
                 if (resolvedIp == "0.0.0.0" || resolvedIp.startsWith("127.") || resolvedIp.startsWith("10.")) {
                     try {
                         val dohUrl = "https://dns.google/resolve?name=$cleanDomain&type=A"
@@ -61,17 +69,15 @@ fun GeolocationWebView(domain: String, modifier: Modifier = Modifier) {
                         if (answers != null && answers.length() > 0) {
                             resolvedIp = answers.getJSONObject(answers.length() - 1).optString("data", resolvedIp)
                         }
-                    } catch (e: Exception) { /* keep whatever we had */ }
+                    } catch (_: Exception) {}
                 }
                 ipAddress = resolvedIp
 
-                // Step 2: Fetch geolocation from ipwho.is (free, HTTPS, always online)
+                // Fetch geolocation from ipwho.is (HTTPS, free, always online)
                 val apiUrl = "https://ipwho.is/$resolvedIp"
                 val conn = URL(apiUrl).openConnection() as HttpURLConnection
                 conn.connectTimeout = 6000
                 conn.readTimeout = 6000
-                conn.requestMethod = "GET"
-
                 val jsonStr = conn.inputStream.bufferedReader().readText()
                 conn.disconnect()
 
@@ -86,7 +92,7 @@ fun GeolocationWebView(domain: String, modifier: Modifier = Modifier) {
                         longitude = json.optDouble("longitude", 0.0)
                     )
                 } else {
-                    errorMsg = "Location unavailable for this IP"
+                    errorMsg = "Location unavailable"
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -98,7 +104,7 @@ fun GeolocationWebView(domain: String, modifier: Modifier = Modifier) {
     }
 
     Column(modifier = modifier.fillMaxWidth()) {
-        // Status row
+        // Status
         Row(
             modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -124,9 +130,13 @@ fun GeolocationWebView(domain: String, modifier: Modifier = Modifier) {
             }
         }
 
-        // Map or error
+        // Map via OpenStreetMap embed (most reliable - no JS library needed)
         if (geoData != null) {
-            val mapHtml = remember(geoData) { buildMapHtml(geoData!!) }
+            val lat = geoData!!.latitude
+            val lon = geoData!!.longitude
+            val delta = 0.05
+            val bbox = "${lon - delta},${lat - delta},${lon + delta},${lat + delta}"
+            val mapUrl = "https://www.openstreetmap.org/export/embed.html?bbox=$bbox&layer=mapnik&marker=$lat,$lon"
 
             AndroidView(
                 modifier = Modifier
@@ -141,13 +151,7 @@ fun GeolocationWebView(domain: String, modifier: Modifier = Modifier) {
                         settings.cacheMode = WebSettings.LOAD_DEFAULT
                         settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
                         webViewClient = WebViewClient()
-                        loadDataWithBaseURL(
-                            "https://cdnjs.cloudflare.com",
-                            mapHtml,
-                            "text/html",
-                            "UTF-8",
-                            null
-                        )
+                        loadUrl(mapUrl)
                     }
                 },
                 update = { /* no-op */ }
@@ -161,40 +165,4 @@ fun GeolocationWebView(domain: String, modifier: Modifier = Modifier) {
             )
         }
     }
-}
-
-data class GeoResult(
-    val ip: String,
-    val country: String,
-    val region: String,
-    val city: String,
-    val latitude: Double,
-    val longitude: Double
-)
-
-private fun buildMapHtml(geo: GeoResult): String {
-    val safeCity = geo.city.replace("'", "\\'").replace("\"", "&quot;")
-    val safeCountry = geo.country.replace("'", "\\'").replace("\"", "&quot;")
-
-    return """<!DOCTYPE html><html><head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css"/>
-<style>
-*{margin:0;padding:0}
-html,body{width:100%;height:100%;overflow:hidden;background:#0d0e15}
-#map{width:100%;height:100%;position:absolute;top:0;left:0;right:0;bottom:0}
-.leaflet-popup-content-wrapper{background:#151722;color:#fff;border:1px solid #d4af37;border-radius:5px;font-size:11px}
-.leaflet-popup-tip{background:#151722}
-</style></head><body>
-<div id="map"></div>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
-<script>
-var m=L.map('map',{zoomControl:false,attributionControl:false}).setView([${geo.latitude},${geo.longitude}],12);
-L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{maxZoom:19,subdomains:'abcd'}).addTo(m);
-var ic=L.divIcon({className:'x',html:"<div style='background:#ff1744;width:14px;height:14px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 12px #ff1744'></div>",iconSize:[14,14],iconAnchor:[7,7]});
-L.marker([${geo.latitude},${geo.longitude}],{icon:ic}).addTo(m).bindPopup("<b style='color:#d4af37'>${safeCity}</b> ${safeCountry}<br><span style='font-size:10px;color:#888'>${geo.ip}</span>").openPopup();
-setTimeout(function(){m.invalidateSize()},150);
-setTimeout(function(){m.invalidateSize()},400);
-</script></body></html>"""
 }
