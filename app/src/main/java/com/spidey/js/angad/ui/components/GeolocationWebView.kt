@@ -82,8 +82,12 @@ fun GeolocationWebView(domain: String, modifier: Modifier = Modifier) {
                     .clip(RoundedCornerShape(12.dp)),
                 factory = { context ->
                     WebView(context).apply {
+                        setBackgroundColor(android.graphics.Color.parseColor("#0D0E15"))
                         settings.javaScriptEnabled = true
                         settings.domStorageEnabled = true
+                        settings.databaseEnabled = true
+                        settings.useWideViewPort = true
+                        settings.loadWithOverviewMode = true
                         settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
                         webViewClient = WebViewClient()
                         loadUrl(backendUrl)

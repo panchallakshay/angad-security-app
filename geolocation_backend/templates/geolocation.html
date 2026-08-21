@@ -2,80 +2,140 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Blocked IP Geolocation</title>
-    <!-- Leaflet CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <!-- Leaflet CSS without SRI to prevent CDN mismatch in WebView -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
     <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        * {
+            box-sizing: border-box;
             margin: 0;
             padding: 0;
-            background-color: #f4f4f9;
-            color: #333;
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
         }
-        .header {
-            background-color: #d32f2f;
-            color: white;
-            padding: 15px 20px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-        .header h2 {
-            margin: 0;
-            font-size: 18px;
-        }
-        .info-panel {
-            padding: 20px;
-            background: white;
-            border-bottom: 1px solid #ddd;
-        }
-        .info-panel p {
-            margin: 5px 0;
-            font-size: 14px;
-        }
-        .error-message {
-            color: #d32f2f;
-            font-weight: bold;
+        html, body {
+            width: 100%;
+            height: 100%;
+            background-color: #0d0e15;
+            color: #ffffff;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            overflow: hidden;
+            position: relative;
         }
         #map {
-            flex-grow: 1;
             width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #1a1c29;
             z-index: 1;
+        }
+        .overlay-card {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            right: 12px;
+            background: rgba(13, 14, 21, 0.88);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(218, 165, 32, 0.3);
+            border-radius: 10px;
+            padding: 10px 14px;
+            z-index: 1000;
+            font-size: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+        .overlay-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding-bottom: 6px;
+            margin-bottom: 6px;
+        }
+        .overlay-title {
+            color: #d4af37;
+            font-weight: 700;
+            font-size: 11px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+        .ip-badge {
+            background: rgba(211, 47, 47, 0.3);
+            color: #ff5252;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 11px;
+            border: 1px solid rgba(255, 82, 82, 0.3);
+        }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 3px 0;
+            color: #cccccc;
+        }
+        .info-row strong {
+            color: #ffffff;
+        }
+        .error-badge {
+            color: #ff5252;
+            font-weight: 600;
+            margin-top: 4px;
+            text-align: center;
         }
         .loader {
             text-align: center;
-            padding: 20px;
-            font-style: italic;
-            color: #666;
+            color: #d4af37;
+            font-size: 12px;
+            padding: 4px 0;
+        }
+        /* Custom Leaflet popup */
+        .leaflet-popup-content-wrapper {
+            background: #151722;
+            color: #fff;
+            border: 1px solid #d4af37;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.6);
+        }
+        .leaflet-popup-tip {
+            background: #151722;
         }
     </style>
 </head>
 <body>
 
-    <div class="header">
-        <h2>Blocked IP Geolocation</h2>
-    </div>
+    <div id="map"></div>
 
-    <div class="info-panel" id="info-panel">
-        <div class="loader" id="loader">Fetching location data for {{ ip }}...</div>
+    <div class="overlay-card" id="overlay-card">
+        <div class="overlay-header">
+            <span class="overlay-title">THREAT ORIGIN</span>
+            <span class="ip-badge" id="val-ip">{{ ip }}</span>
+        </div>
+        <div class="loader" id="loader">Resolving Geolocation Coordinates...</div>
         <div id="info-content" style="display: none;">
-            <p><strong>IP:</strong> <span id="val-ip"></span> (<span id="val-type"></span>)</p>
-            <div id="geo-details" style="display: none;">
-                <p><strong>Location:</strong> <span id="val-city"></span>, <span id="val-region"></span>, <span id="val-country"></span></p>
-                <p><strong>Coordinates:</strong> <span id="val-coords"></span></p>
-                <p><strong>Approximate Address:</strong> <span id="val-address"></span></p>
+            <div id="geo-details">
+                <div class="info-row">
+                    <span>Location:</span>
+                    <strong id="val-location">Unknown</strong>
+                </div>
+                <div class="info-row">
+                    <span>Coordinates:</span>
+                    <strong id="val-coords">0, 0</strong>
+                </div>
+                <div class="info-row">
+                    <span>Accuracy:</span>
+                    <strong id="val-accuracy">N/A</strong>
+                </div>
             </div>
-            <p id="error-box" class="error-message" style="display: none;"></p>
+            <div id="error-box" class="error-badge" style="display: none;"></div>
         </div>
     </div>
 
-    <div id="map"></div>
-
-    <!-- Leaflet JS -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <!-- Leaflet JS from reliable CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
     <script>
         const targetIp = "{{ ip }}";
     </script>
