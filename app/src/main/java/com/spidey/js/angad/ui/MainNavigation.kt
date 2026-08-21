@@ -66,6 +66,7 @@ fun MainNavigation() {
             composable(Screen.Home.route) { HomeScreen() }
             composable(Screen.Apps.route) { AppControlScreen() }
             composable(Screen.Threats.route) { ThreatLogScreen() }
+            composable(Screen.Blockchain.route) { BlockchainDashboardScreen() }
             composable(Screen.Traffic.route) { TrafficMonitorScreen() }
             composable(Screen.Settings.route) { SettingsScreen() }
         }

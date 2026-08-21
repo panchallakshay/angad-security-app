@@ -14,6 +14,7 @@ import androidx.core.app.NotificationCompat
 import com.spidey.js.angad.db.AngadDatabase
 import com.spidey.js.angad.db.DnsEvent
 import com.spidey.js.angad.ml.AngadModelEngine
+import com.spidey.js.angad.util.BlockchainClient
 import com.spidey.js.angad.util.PacketParser
 import com.spidey.js.angad.util.PreferencesManager
 import kotlinx.coroutines.*
@@ -168,12 +169,12 @@ class AngadVpnService : VpnService() {
                         } else {
                             result.mlVerdict
                         }
-                        logAndNotifyBlock(dnsQuestion.domain, appInfo, finalVerdict)
+                        logAndNotifyBlock(dnsQuestion.domain, dstIp.hostAddress ?: "", appInfo, finalVerdict)
                         val response = PacketParser.createSinkholeResponse(data, dnsOffset, dnsLen)
                         val ipResponse = buildIpUdpPacket(dstIp, dstPort, srcIp, srcPort, response, response.size)
                         outputStream.write(ipResponse)
                     } else {
-                        logDomainEvent(dnsQuestion.domain, "DNS", appInfo, result.mlVerdict, false)
+                        logDomainEvent(dnsQuestion.domain, dstIp.hostAddress ?: "", "DNS", appInfo, result.mlVerdict, false)
                         // SPEED FIX: Launch proxy in a separate job so we don't block the loop
                         serviceScope.launch {
                             proxyDnsQuery(data, dnsOffset, dnsLen, srcIp, srcPort, dstIp, dstPort, outputStream)
@@ -197,7 +198,7 @@ class AngadVpnService : VpnService() {
         return VerdictResult(ml, ml.score >= threshold)
     }
 
-    private fun logAndNotifyBlock(domain: String, app: AppInfo, verdict: AngadModelEngine.ModelVerdict) {
+    private fun logAndNotifyBlock(domain: String, ip: String, app: AppInfo, verdict: AngadModelEngine.ModelVerdict) {
         serviceScope.launch {
             try {
                 val metadata = "M1_Score=${"%.2f".format(verdict.model1Score)};M2_Score=${"%.2f".format(verdict.model2Score)};M3_Score=${"%.2f".format(verdict.model3Score)};Reasons=${verdict.reasons.joinToString("|")};Features=${verdict.featureHighlights.map { "${it.key}=${"%.2f".format(it.value)}" }.joinToString(",")}"
@@ -207,7 +208,11 @@ class AngadVpnService : VpnService() {
                     isThreat = true, threatType = verdict.classification, riskScore = verdict.score.toDouble(),
                     aiMetadata = metadata
                 ))
-                Log.d(TAG, "Logged block event for: $domain")
+                Log.d(TAG, "Logged block event for: $domain ($ip)")
+                
+                // Report to global blockchain
+                BlockchainClient.reportThreat(domain, ip, verdict.classification, verdict.score)
+                
                 if (prefManager.notificationsEnabled.first()) showBlockNotification(domain, app.label, verdict)
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to log block event for $domain", e)
@@ -215,7 +220,7 @@ class AngadVpnService : VpnService() {
         }
     }
 
-    private fun logDomainEvent(domain: String, type: String, app: AppInfo, verdict: AngadModelEngine.ModelVerdict, isBlocked: Boolean) {
+    private fun logDomainEvent(domain: String, ip: String, type: String, app: AppInfo, verdict: AngadModelEngine.ModelVerdict, isBlocked: Boolean) {
         serviceScope.launch {
             try {
                 val metadata = "M1_Score=${"%.2f".format(verdict.model1Score)};M2_Score=${"%.2f".format(verdict.model2Score)};M3_Score=${"%.2f".format(verdict.model3Score)};Reasons=${verdict.reasons.joinToString("|")};Features=${verdict.featureHighlights.map { "${it.key}=${"%.2f".format(it.value)}" }.joinToString(",")}"
@@ -225,7 +230,11 @@ class AngadVpnService : VpnService() {
                     isThreat = isBlocked, threatType = verdict.classification, riskScore = verdict.score.toDouble(),
                     aiMetadata = metadata
                 ))
-                Log.d(TAG, "Logged $type event for: $domain")
+                Log.d(TAG, "Logged $type event for: $domain ($ip)")
+                
+                if (isBlocked) {
+                    BlockchainClient.reportThreat(domain, ip, verdict.classification, verdict.score)
+                }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to log $type event for $domain", e)
             }

@@ -14,7 +14,49 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
+import androidx.compose.material3.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.spidey.js.angad.ui.theme.*
+
+@Composable
+fun DivineStatCard(label: String, value: String, modifier: Modifier, accent: Color) {
+    Box(modifier = modifier) {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = TempleSurface),
+            shape = RoundedCornerShape(topStart = 24.dp, bottomEnd = 24.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(value, style = MaterialTheme.typography.headlineMedium, color = accent, fontWeight = FontWeight.Black)
+                Text(label.uppercase(), style = MaterialTheme.typography.labelSmall, color = AncientWhite.copy(0.5f))
+            }
+        }
+        
+        // Ornamental Border
+        Canvas(modifier = Modifier.matchParentSize()) {
+            val strokeWidth = 1.dp.toPx()
+            val ornamentSize = 12.dp.toPx()
+            
+            // Top-Left corner accent
+            drawPath(
+                path = Path().apply {
+                    moveTo(0f, ornamentSize)
+                    lineTo(0f, 0f)
+                    lineTo(ornamentSize, 0f)
+                },
+                color = accent.copy(alpha = 0.4f),
+                style = Stroke(width = strokeWidth)
+            )
+        }
+    }
+}
 
 @Composable
 fun DivineCard(

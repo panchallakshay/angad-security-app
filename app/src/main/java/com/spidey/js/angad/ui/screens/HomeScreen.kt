@@ -34,6 +34,7 @@ import com.spidey.js.angad.MainActivity
 import com.spidey.js.angad.db.AngadDatabase
 import com.spidey.js.angad.db.DnsEvent
 import com.spidey.js.angad.ui.components.DivineBackground
+import com.spidey.js.angad.ui.components.DivineStatCard
 import com.spidey.js.angad.ui.theme.*
 import com.spidey.js.angad.vpn.AngadVpnService
 import java.text.SimpleDateFormat
@@ -229,43 +230,6 @@ fun DivineStats(scanned: Int, blocked: Int, apps: Int) {
         DivineStatCard("Scanned", scanned.toString(), Modifier.weight(1f), RoyalGold)
         DivineStatCard("Purged", blocked.toString(), Modifier.weight(1f), LavaCrimson)
         DivineStatCard("Watched", apps.toString(), Modifier.weight(1f), DivineSaffron)
-    }
-}
-
-@Composable
-fun DivineStatCard(label: String, value: String, modifier: Modifier, accent: Color) {
-    Box(modifier = modifier) {
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = TempleSurface),
-            shape = RoundedCornerShape(topStart = 24.dp, bottomEnd = 24.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(value, style = MaterialTheme.typography.headlineMedium, color = accent, fontWeight = FontWeight.Black)
-                Text(label.uppercase(), style = MaterialTheme.typography.labelSmall, color = AncientWhite.copy(0.5f))
-            }
-        }
-        
-        // Ornamental Border
-        Canvas(modifier = Modifier.matchParentSize()) {
-            val strokeWidth = 1.dp.toPx()
-            val ornamentSize = 12.dp.toPx()
-            
-            // Top-Left corner accent
-            drawPath(
-                path = Path().apply {
-                    moveTo(0f, ornamentSize)
-                    lineTo(0f, 0f)
-                    lineTo(ornamentSize, 0f)
-                },
-                color = accent.copy(alpha = 0.4f),
-                style = Stroke(width = strokeWidth)
-            )
-        }
     }
 }
 
