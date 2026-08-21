@@ -73,21 +73,23 @@ fun GeolocationWebView(domain: String, modifier: Modifier = Modifier) {
         }
         
         if (ipAddress != null) {
-            val backendUrl = "https://angad-geo-server.onrender.com/map/$ipAddress"
+            val backendUrl = "https://angad-geo-server.onrender.com/map/$ipAddress?t=${System.currentTimeMillis()}"
             
             AndroidView(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(280.dp)
+                    .height(340.dp)
                     .clip(RoundedCornerShape(12.dp)),
                 factory = { context ->
                     WebView(context).apply {
+                        clearCache(true)
                         setBackgroundColor(android.graphics.Color.parseColor("#0D0E15"))
                         settings.javaScriptEnabled = true
                         settings.domStorageEnabled = true
                         settings.databaseEnabled = true
                         settings.useWideViewPort = true
                         settings.loadWithOverviewMode = true
+                        settings.cacheMode = WebSettings.LOAD_NO_CACHE
                         settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
                         webViewClient = WebViewClient()
                         loadUrl(backendUrl)
