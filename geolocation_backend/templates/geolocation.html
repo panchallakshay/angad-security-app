@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blocked IP Geolocation</title>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f9;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        .header {
+            background-color: #d32f2f;
+            color: white;
+            padding: 15px 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .header h2 {
+            margin: 0;
+            font-size: 18px;
+        }
+        .info-panel {
+            padding: 20px;
+            background: white;
+            border-bottom: 1px solid #ddd;
+        }
+        .info-panel p {
+            margin: 5px 0;
+            font-size: 14px;
+        }
+        .error-message {
+            color: #d32f2f;
+            font-weight: bold;
+        }
+        #map {
+            flex-grow: 1;
+            width: 100%;
+            z-index: 1;
+        }
+        .loader {
+            text-align: center;
+            padding: 20px;
+            font-style: italic;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h2>Blocked IP Geolocation</h2>
+    </div>
+
+    <div class="info-panel" id="info-panel">
+        <div class="loader" id="loader">Fetching location data for {{ ip }}...</div>
+        <div id="info-content" style="display: none;">
+            <p><strong>IP:</strong> <span id="val-ip"></span> (<span id="val-type"></span>)</p>
+            <div id="geo-details" style="display: none;">
+                <p><strong>Location:</strong> <span id="val-city"></span>, <span id="val-region"></span>, <span id="val-country"></span></p>
+                <p><strong>Coordinates:</strong> <span id="val-coords"></span></p>
+                <p><strong>Approximate Address:</strong> <span id="val-address"></span></p>
+            </div>
+            <p id="error-box" class="error-message" style="display: none;"></p>
+        </div>
+    </div>
+
+    <div id="map"></div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script>
+        const targetIp = "{{ ip }}";
+    </script>
+    <script src="/static/js/map.js"></script>
+</body>
+</html>

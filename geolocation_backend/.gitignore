@@ -1,0 +1,7 @@
+__pycache__/
+*.py[cod]
+*$py.class
+.env
+venv/
+env/
+ip_geolocation_cache.db
