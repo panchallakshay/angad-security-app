@@ -42,10 +42,26 @@ fun GeolocationWebView(domain: String, modifier: Modifier = Modifier) {
                 val cleanDomain = domain.trim()
                     .removePrefix("http://").removePrefix("https://")
                     .split("/")[0]
-                val resolvedIp = try {
-                    InetAddress.getByName(cleanDomain).hostAddress ?: "8.8.8.8"
-                } catch (e: Exception) {
-                    "8.8.8.8"
+
+                // Try local DNS first
+                var resolvedIp = try {
+                    InetAddress.getByName(cleanDomain).hostAddress ?: "0.0.0.0"
+                } catch (e: Exception) { "0.0.0.0" }
+
+                // If VPN blocked it (0.0.0.0) or it's a private IP, use Google DNS-over-HTTPS
+                if (resolvedIp == "0.0.0.0" || resolvedIp.startsWith("127.") || resolvedIp.startsWith("10.")) {
+                    try {
+                        val dohUrl = "https://dns.google/resolve?name=$cleanDomain&type=A"
+                        val dohConn = URL(dohUrl).openConnection() as HttpURLConnection
+                        dohConn.connectTimeout = 4000
+                        dohConn.readTimeout = 4000
+                        val dohJson = JSONObject(dohConn.inputStream.bufferedReader().readText())
+                        dohConn.disconnect()
+                        val answers = dohJson.optJSONArray("Answer")
+                        if (answers != null && answers.length() > 0) {
+                            resolvedIp = answers.getJSONObject(answers.length() - 1).optString("data", resolvedIp)
+                        }
+                    } catch (e: Exception) { /* keep whatever we had */ }
                 }
                 ipAddress = resolvedIp
 
