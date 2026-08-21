@@ -157,7 +157,6 @@ data class GeoResult(
 )
 
 private fun buildMapHtml(geo: GeoResult): String {
-    val loc = listOf(geo.city, geo.region, geo.country).filter { it.isNotBlank() }.joinToString(", ")
     val safeCity = geo.city.replace("'", "\\'").replace("\"", "&quot;")
     val safeCountry = geo.country.replace("'", "\\'").replace("\"", "&quot;")
 
@@ -166,27 +165,20 @@ private fun buildMapHtml(geo: GeoResult): String {
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css"/>
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{background:#0d0e15;overflow:hidden;display:flex;flex-direction:column;height:100vh;font-family:sans-serif;color:#fff;gap:4px;padding:4px}
-.h{display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,.04);border:1px solid rgba(218,165,32,.25);border-radius:6px;padding:5px 8px;font-size:9px}
-.h .t{color:#d4af37;font-weight:700;letter-spacing:.5px;text-transform:uppercase}
-.h .ip{background:rgba(255,23,68,.15);color:#ff5252;border:1px solid rgba(255,23,68,.3);padding:1px 4px;border-radius:3px;font-weight:700;font-size:9px}
-#map{flex:1;border-radius:6px;border:1px solid rgba(255,255,255,.08);min-height:100px}
-.f{font-size:9px;color:#888;padding:3px 6px;background:rgba(255,255,255,.02);border-radius:4px}
-.f b{color:#ccc}
+*{margin:0;padding:0}
+html,body{width:100%;height:100%;overflow:hidden;background:#0d0e15}
+#map{width:100%;height:100%;position:absolute;top:0;left:0;right:0;bottom:0}
 .leaflet-popup-content-wrapper{background:#151722;color:#fff;border:1px solid #d4af37;border-radius:5px;font-size:11px}
 .leaflet-popup-tip{background:#151722}
 </style></head><body>
-<div class="h"><span class="t">${safeCountry.ifBlank { "THREAT ORIGIN" }}</span><span class="ip">${geo.ip}</span></div>
 <div id="map"></div>
-<div class="f"><b>Location:</b> $loc</div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 <script>
 var m=L.map('map',{zoomControl:false,attributionControl:false}).setView([${geo.latitude},${geo.longitude}],12);
 L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{maxZoom:19,subdomains:'abcd'}).addTo(m);
 var ic=L.divIcon({className:'x',html:"<div style='background:#ff1744;width:14px;height:14px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 12px #ff1744'></div>",iconSize:[14,14],iconAnchor:[7,7]});
 L.marker([${geo.latitude},${geo.longitude}],{icon:ic}).addTo(m).bindPopup("<b style='color:#d4af37'>${safeCity}</b> ${safeCountry}<br><span style='font-size:10px;color:#888'>${geo.ip}</span>").openPopup();
-setTimeout(function(){m.invalidateSize()},200);
-setTimeout(function(){m.invalidateSize()},500);
+setTimeout(function(){m.invalidateSize()},150);
+setTimeout(function(){m.invalidateSize()},400);
 </script></body></html>"""
 }
