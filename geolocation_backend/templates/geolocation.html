@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Blocked IP Geolocation</title>
-    <!-- Leaflet CSS without SRI to prevent CDN mismatch in WebView -->
+    <title>Threat Geolocation</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
     <style>
         * {
@@ -12,194 +11,138 @@
             margin: 0;
             padding: 0;
         }
-        html, body {
-            width: 100%;
-            height: 100%;
+        body {
             background-color: #0d0e15;
             color: #ffffff;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            height: 100vh;
             overflow: hidden;
-            position: relative;
         }
-        #map {
-            width: 100%;
-            height: 100%;
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: #1a1c29;
-            z-index: 1;
-        }
-        .overlay-card {
-            position: absolute;
-            top: 12px;
-            left: 12px;
-            right: 12px;
-            background: rgba(13, 14, 21, 0.88);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            border: 1px solid rgba(218, 165, 32, 0.3);
-            border-radius: 10px;
-            padding: 10px 14px;
-            z-index: 1000;
-            font-size: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-        }
-        .overlay-header {
+        .header-bar {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(218, 165, 32, 0.25);
+            border-radius: 8px;
+            padding: 8px 12px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-            padding-bottom: 6px;
-            margin-bottom: 6px;
         }
-        .overlay-title {
+        .title {
             color: #d4af37;
             font-weight: 700;
             font-size: 11px;
             letter-spacing: 1px;
             text-transform: uppercase;
         }
-        .ip-badge {
-            background: rgba(211, 47, 47, 0.3);
+        .ip-tag {
+            background: rgba(255, 23, 68, 0.2);
             color: #ff5252;
+            border: 1px solid rgba(255, 23, 68, 0.4);
             padding: 2px 6px;
             border-radius: 4px;
-            font-weight: 600;
+            font-weight: 700;
             font-size: 11px;
-            border: 1px solid rgba(255, 82, 82, 0.3);
         }
-        .info-row {
+        #map {
+            width: 100%;
+            height: 200px;
+            min-height: 180px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background-color: #151722;
+        }
+        .info-card {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 11px;
+            color: #bbb;
             display: flex;
-            justify-content: space-between;
-            margin: 3px 0;
-            color: #cccccc;
+            flex-direction: column;
+            gap: 4px;
         }
-        .info-row strong {
-            color: #ffffff;
-        }
-        .error-badge {
-            color: #ff5252;
-            font-weight: 600;
-            margin-top: 4px;
-            text-align: center;
+        .info-card strong {
+            color: #fff;
         }
         .loader {
-            text-align: center;
             color: #d4af37;
-            font-size: 12px;
-            padding: 4px 0;
+            text-align: center;
+            font-size: 11px;
+            padding: 4px;
         }
-        /* Custom Leaflet popup */
         .leaflet-popup-content-wrapper {
             background: #151722;
             color: #fff;
             border: 1px solid #d4af37;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.6);
-        }
-        .leaflet-popup-tip {
-            background: #151722;
+            border-radius: 6px;
         }
     </style>
 </head>
 <body>
 
+    <div class="header-bar">
+        <span class="title" id="location-title">IP GEOLOCATION</span>
+        <span class="ip-tag">{{ ip }}</span>
+    </div>
+
     <div id="map"></div>
 
-    <div class="overlay-card" id="overlay-card">
-        <div class="overlay-header">
-            <span class="overlay-title">THREAT ORIGIN</span>
-            <span class="ip-badge" id="val-ip">{{ ip }}</span>
-        </div>
-        <div class="loader" id="loader">Resolving Geolocation Coordinates...</div>
-        <div id="info-content" style="display: none;">
-            <div id="geo-details">
-                <div class="info-row">
-                    <span>Location:</span>
-                    <strong id="val-location">Unknown</strong>
-                </div>
-                <div class="info-row">
-                    <span>Coordinates:</span>
-                    <strong id="val-coords">0, 0</strong>
-                </div>
-                <div class="info-row">
-                    <span>Accuracy:</span>
-                    <strong id="val-accuracy">N/A</strong>
-                </div>
-            </div>
-            <div id="error-box" class="error-badge" style="display: none;"></div>
+    <div class="info-card">
+        <div id="loader" class="loader">Locating IP coordinates on map...</div>
+        <div id="info-body" style="display: none;">
+            <div><strong>Location:</strong> <span id="val-loc">Detecting...</span></div>
+            <div><strong>Coordinates:</strong> <span id="val-coords">0.00, 0.00</span></div>
+            <div><strong>Address:</strong> <span id="val-addr">Approximate location</span></div>
         </div>
     </div>
 
-    <!-- Leaflet JS from reliable CDN -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
     <script>
         const targetIp = "{{ ip }}";
 
         document.addEventListener('DOMContentLoaded', () => {
-            fetchLocationData(targetIp);
-        });
-
-        function fetchLocationData(ip) {
-            fetch(`/api/geolocation/${ip}`)
-                .then(response => response.json())
+            fetch(`/api/geolocation/${targetIp}`)
+                .then(r => r.json())
                 .then(data => {
                     const loader = document.getElementById('loader');
-                    const infoContent = document.getElementById('info-content');
+                    const infoBody = document.getElementById('info-body');
                     if (loader) loader.style.display = 'none';
-                    if (infoContent) infoContent.style.display = 'block';
-                    
-                    const ipBadge = document.getElementById('val-ip');
-                    if (ipBadge) ipBadge.textContent = data.ip || ip;
+                    if (infoBody) infoBody.style.display = 'flex';
 
                     if (data.success && data.location && data.location.latitude && data.location.longitude) {
                         const loc = data.location;
                         const locStr = [loc.city, loc.region, loc.country].filter(Boolean).join(', ') || 'Unknown Region';
                         
-                        const valLoc = document.getElementById('val-location');
-                        const valCoords = document.getElementById('val-coords');
-                        const valAcc = document.getElementById('val-accuracy');
-                        
-                        if (valLoc) valLoc.textContent = locStr;
-                        if (valCoords) valCoords.textContent = `${Number(loc.latitude).toFixed(4)}, ${Number(loc.longitude).toFixed(4)}`;
-                        if (valAcc) valAcc.textContent = loc.accuracy_radius_km ? `~${loc.accuracy_radius_km} km` : 'Standard';
-                        
+                        document.getElementById('location-title').textContent = loc.country || 'IP GEOLOCATION';
+                        document.getElementById('val-loc').textContent = locStr;
+                        document.getElementById('val-coords').textContent = `${Number(loc.latitude).toFixed(4)}, ${Number(loc.longitude).toFixed(4)}`;
+                        document.getElementById('val-addr').textContent = data.address?.display_name || locStr;
+
                         initMap(loc.latitude, loc.longitude, data);
                     } else {
-                        const errorBox = document.getElementById('error-box');
-                        const geoDetails = document.getElementById('geo-details');
-                        if (geoDetails) geoDetails.style.display = 'none';
-                        if (errorBox) {
-                            errorBox.style.display = 'block';
-                            errorBox.textContent = data.error || 'Location data not available for this IP.';
-                        }
+                        document.getElementById('val-loc').textContent = data.error || 'Coordinates unavailable';
                         initMap(20.5937, 78.9629, null, true);
                     }
                 })
-                .catch(err => {
-                    console.error('Error fetching geolocation:', err);
-                    const loader = document.getElementById('loader');
-                    if (loader) loader.textContent = 'Failed to load geolocation data.';
+                .catch(e => {
+                    console.error(e);
+                    document.getElementById('loader').textContent = 'Unable to fetch map data';
                     initMap(20.5937, 78.9629, null, true);
                 });
-        }
+        });
 
         function initMap(lat, lon, data, isError = false) {
             try {
-                const mapContainer = document.getElementById('map');
-                if (!mapContainer) return;
-
-                if (window.currentMap) {
-                    window.currentMap.remove();
-                }
+                if (window.currentMap) window.currentMap.remove();
 
                 const map = L.map('map', {
                     zoomControl: false,
                     attributionControl: false
-                }).setView([lat, lon], isError ? 3 : 11);
+                }).setView([lat, lon], isError ? 2 : 11);
 
                 window.currentMap = map;
 
@@ -208,27 +151,20 @@
                     subdomains: 'abcd'
                 }).addTo(map);
 
-                if (!isError && data && data.location) {
+                if (!isError && data) {
                     const redIcon = L.divIcon({
                         className: 'custom-div-icon',
-                        html: "<div style='background-color:#ff1744;width:16px;height:16px;border-radius:50%;border:3px solid #ffffff;box-shadow:0 0 10px #ff1744;'></div>",
-                        iconSize: [16, 16],
-                        iconAnchor: [8, 8]
+                        html: "<div style='background-color:#ff1744;width:14px;height:14px;border-radius:50%;border:2px solid #ffffff;box-shadow:0 0 10px #ff1744;'></div>",
+                        iconSize: [14, 14],
+                        iconAnchor: [7, 7]
                     });
 
                     const marker = L.marker([lat, lon], { icon: redIcon }).addTo(map);
-                    
-                    const city = data.location.city || 'Unknown';
-                    const country = data.location.country || '';
-                    const popupContent = `
-                        <div style="font-family:sans-serif;font-size:12px;padding:4px;">
-                            <b style="color:#d4af37;">${city}</b>, ${country}<br>
-                            <span style="color:#888;font-size:10px;">IP: ${data.ip}</span>
-                        </div>
-                    `;
-                    marker.bindPopup(popupContent).openPopup();
-                    
-                    if (data.location.accuracy_radius_km) {
+                    const city = data.location?.city || '';
+                    const country = data.location?.country || '';
+                    marker.bindPopup(`<b style="color:#d4af37;">${city}</b> ${country}<br><span style="font-size:10px;color:#888;">${data.ip}</span>`).openPopup();
+
+                    if (data.location?.accuracy_radius_km) {
                         L.circle([lat, lon], {
                             color: '#ff1744',
                             fillColor: '#ff1744',
@@ -239,12 +175,10 @@
                     }
                 }
 
-                setTimeout(() => map.invalidateSize(), 100);
-                setTimeout(() => map.invalidateSize(), 300);
-                setTimeout(() => map.invalidateSize(), 800);
-
-            } catch (e) {
-                console.error('Error rendering Leaflet map:', e);
+                setTimeout(() => map.invalidateSize(), 150);
+                setTimeout(() => map.invalidateSize(), 450);
+            } catch (err) {
+                console.error('Leaflet render error:', err);
             }
         }
     </script>
